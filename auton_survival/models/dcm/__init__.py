@@ -115,7 +115,7 @@ class DeepCoxMixtures:
 
   def _preprocess_test_data(self, x):
     x = _dataframe_to_array(x)
-    return torch.from_numpy(x).float()
+    return torch.from_numpy(x.astype(float)).float()
 
   def _preprocess_training_data(self, x, t, e, vsize, val_data, random_seed):
 
@@ -128,7 +128,7 @@ class DeepCoxMixtures:
     np.random.shuffle(idx)
     x_train, t_train, e_train = x[idx], t[idx], e[idx]
 
-    x_train = torch.from_numpy(x_train).float()
+    x_train = torch.from_numpy(x_train.astype(float)).float()
     t_train = torch.from_numpy(t_train).float()
     e_train = torch.from_numpy(e_train).float()
 
@@ -149,7 +149,7 @@ class DeepCoxMixtures:
       t_val = _dataframe_to_array(t_val)
       e_val = _dataframe_to_array(e_val)
 
-      x_val = torch.from_numpy(x_val).float()
+      x_val = torch.from_numpy(x_val.astype(float)).float()
       t_val = torch.from_numpy(t_val).float()
       e_val = torch.from_numpy(e_val).float()
 
