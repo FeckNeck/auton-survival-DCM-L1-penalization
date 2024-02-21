@@ -470,5 +470,3 @@ SOFTWARE.
 
 from .models.dsm import DeepSurvivalMachines
 from .models.dcm import DeepCoxMixtures
-from .models.cph import DeepCoxPH, DeepRecurrentCoxPH
-from .models.cmhe import DeepCoxMixturesHeterogenousEffects
