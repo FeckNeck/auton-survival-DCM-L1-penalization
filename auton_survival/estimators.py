@@ -55,7 +55,7 @@ def _get_valid_idx(n, size, random_seed):
 
   return vidx
 
-def _fit_dcm(features, outcomes, val_data, random_seed, **hyperparams):
+def _fit_dcm(features, outcomes, val_data, weights_train, random_seed, **hyperparams):
 
   r"""Fit the Deep Cox Mixtures (DCM) [1] model to a given dataset.
 
@@ -117,7 +117,7 @@ def _fit_dcm(features, outcomes, val_data, random_seed, **hyperparams):
                           smoothing_factor=smoothing_factor,
                           random_seed=random_seed)
   model.fit(x=features, t=outcomes.time, e=outcomes.event,
-            val_data=val_data, iters=epochs, batch_size=bs,
+            val_data=val_data, weigths=weights_train ,iters=epochs, batch_size=bs,
             learning_rate=lr)
 
   return model
@@ -316,6 +316,7 @@ data and training set weights are both specified."
     if self.model == 'dcm':
       self._model = _fit_dcm(features, outcomes,
                              val_data,
+                             weights_train,
                              self.random_seed,
                              **self.hyperparams)
 
@@ -324,7 +325,7 @@ data and training set weights are both specified."
 
     self.fitted = True
     return self
-
+  
   def predict_survival(self, features, times):
 
     """Predict survival probabilities at specified time(s).

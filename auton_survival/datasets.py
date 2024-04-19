@@ -95,14 +95,14 @@ def _load_framingham_dataset(sequential):
   x_ = StandardScaler().fit_transform(x)
 
   if not sequential:
-    return x_, time, event
+    return data, time, event
   else:
     x, t, e = [], [], []
     for id_ in sorted(list(set(data['RANDID']))):
       x.append(x_[data['RANDID'] == id_])
       t.append(time[data['RANDID'] == id_])
       e.append(event[data['RANDID'] == id_])
-    return x, t, e
+    return data, t, e
 
 def _load_pbc_dataset(sequential):
   """Helper function to load and preprocess the PBC dataset
@@ -143,14 +143,14 @@ def _load_pbc_dataset(sequential):
   x_ = StandardScaler().fit_transform(x)
 
   if not sequential:
-    return x_, time, event
+    return data, time, event
   else:
     x, t, e = [], [], []
     for id_ in sorted(list(set(data['id']))):
       x.append(x_[data['id'] == id_])
       t.append(time[data['id'] == id_])
       e.append(event[data['id'] == id_])
-    return x, t, e
+    return data, t, e
 
 def load_support():
 
@@ -179,10 +179,10 @@ def load_support():
 
   cat_feats = ['sex', 'dzgroup', 'dzclass', 'income', 'race', 'ca']
   num_feats = ['age', 'num.co', 'meanbp', 'wblc', 'hrt', 'resp',
-               'temp', 'pafi', 'alb', 'bili', 'crea', 'sod', 'ph',
-               'glucose', 'bun', 'urine', 'adlp', 'adls']
+              'temp', 'pafi', 'alb', 'bili', 'crea', 'sod', 'ph',
+              'glucose', 'bun', 'urine', 'adlp', 'adls']
 
-  return outcomes, data[cat_feats+num_feats]
+  return outcomes, data[cat_feats + num_feats]
 
 
 # def _load_support_dataset():
