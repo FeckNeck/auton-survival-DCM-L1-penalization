@@ -222,6 +222,7 @@ class DeepCoxMixtures:
                          use_posteriors=True,
                          random_seed=self.random_seed)
 
+    
     self.torch_model = (model[0].eval(), model[1])
     self.fitted = True
 

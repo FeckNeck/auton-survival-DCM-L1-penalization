@@ -108,14 +108,12 @@ def get_likelihood(model, breslow_splines, x, t, e):
   #   probs = gates_prob*event_probs
   return probs
 
-def q_function(model, x, t, e, posteriors, weights, typ='soft', alpha = 0.1):
+def q_function(model, x, t, e, posteriors, typ='soft', alpha = 0.1):
 
   if typ == 'hard': z = get_hard_z(posteriors)
   else: z = sample_hard_z(posteriors)
 
   gates, lrisks = model(x)
-  n_samples = x.shape[0]
-
   k = model.k
 
   loss = 0
@@ -129,10 +127,13 @@ def q_function(model, x, t, e, posteriors, weights, typ='soft', alpha = 0.1):
   gate_loss = -torch.sum(gate_loss)
   loss+=gate_loss
 
-  #add lasso penalization with n * lambda * (soft_abs(beta, a)) + 0.5 * (beta**2))).sum()
-  loss += 0.5 * torch.sum(model.expert.weight**2)
+  L1_penalty = 0
+  for param in model.parameters():
+    L1_penalty += torch.sum(torch.abs(param))
+  loss += alpha*L1_penalty
 
-  return loss + np.sum(alpha * np.square(weights)) / (2.0 * n_samples)
+  return loss
+
 
 def e_step(model, breslow_splines, x, t, e):
 
@@ -148,10 +149,10 @@ def e_step(model, breslow_splines, x, t, e):
 
   return posteriors
 
-def m_step(model, optimizer, x, t, e, posteriors, weights, typ='soft'):
+def m_step(model, optimizer, x, t, e, posteriors, typ='soft'):
 
   optimizer.zero_grad()
-  loss = q_function(model, x, t, e, posteriors, weights, typ)
+  loss = q_function(model, x, t, e, posteriors, typ)
   loss.backward()
   optimizer.step()
 
@@ -184,7 +185,7 @@ def fit_breslow(model, x, t, e, posteriors=None,
   return breslow_splines
 
 
-def train_step(model, x, t, e, weights, breslow_splines, optimizer,
+def train_step(model, x, t, e, breslow_splines, optimizer,
                bs=256, seed=100, typ='soft', use_posteriors=False,
                update_splines_after=10, smoothing_factor=1e-4):
 
@@ -208,7 +209,7 @@ def train_step(model, x, t, e, weights, breslow_splines, optimizer,
       posteriors = e_step(model, breslow_splines, xb, tb, eb)
 
     torch.enable_grad()
-    loss = m_step(model, optimizer, xb, tb, eb, posteriors, weights, typ=typ)
+    loss = m_step(model, optimizer, xb, tb, eb, posteriors, typ=typ)
 
     with torch.no_grad():
       try:
@@ -244,7 +245,7 @@ def test_step(model, x, t, e, breslow_splines, loss='q', typ='soft'):
   return float(loss/x.shape[0])
 
 
-def train_dcm(model, train_data, val_data, weights, epochs=50,
+def train_dcm(model, train_data, val_data, epochs=50,
               patience=3, vloss='q', bs=256, typ='soft', lr=1e-3,
               use_posteriors=True, debug=False, random_seed=0,
               return_losses=False, update_splines_after=10,
@@ -261,6 +262,10 @@ def train_dcm(model, train_data, val_data, weights, epochs=50,
 
   optimizer = torch.optim.Adam(model.parameters(), lr=lr)
   optimizer = get_optimizer(model, lr)
+  #get weight
+  betas = model.expert.weight
+  print(betas)
+  print(betas.shape)
 
   valc = np.inf
   patience_ = 0
@@ -273,7 +278,7 @@ def train_dcm(model, train_data, val_data, weights, epochs=50,
 
     # train_step_start = time.time()
     breslow_splines = train_step(model, xt, tt, et, breslow_splines,
-                                 optimizer,weights=weights, bs=bs, seed=epoch, typ=typ,
+                                 optimizer, bs=bs, seed=epoch, typ=typ,
                                  use_posteriors=use_posteriors,
                                  update_splines_after=update_splines_after,
                                  smoothing_factor=smoothing_factor)
