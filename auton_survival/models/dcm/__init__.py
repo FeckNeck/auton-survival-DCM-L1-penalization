@@ -170,7 +170,7 @@ class DeepCoxMixtures:
 
   def fit(self, x, t, e, vsize=0.15, val_data=None,
           iters=1, learning_rate=1e-3, batch_size=100,
-          optimizer="Adam"):
+          alpha=0.1,optimizer="Adam"):
 
     r"""This method is used to train an instance of the DSM model.
 
@@ -217,6 +217,7 @@ class DeepCoxMixtures:
                          epochs=iters,
                          lr=learning_rate,
                          bs=batch_size,
+                         alpha=alpha,
                          return_losses=True,
                          smoothing_factor=self.smoothing_factor,
                          use_posteriors=True,
