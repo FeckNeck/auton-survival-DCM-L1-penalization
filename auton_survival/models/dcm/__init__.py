@@ -92,14 +92,17 @@ class DeepCoxMixtures:
 
   """
 
-  def __init__(self, k=3, layers=None, gamma=10,
+  def __init__(self, k=3, layers=None, gamma=10, alphas=None,
                smoothing_factor=1e-4, use_activation=False,
                random_seed=0):
 
+    if alphas is None:
+        alphas = [0.1]
     self.k = k
     self.layers = layers
     self.fitted = False
     self.gamma = gamma
+    self.alphas = alphas
     self.smoothing_factor = smoothing_factor
     self.use_activation = use_activation
     self.random_seed = random_seed 
@@ -170,7 +173,7 @@ class DeepCoxMixtures:
 
   def fit(self, x, t, e, vsize=0.15, val_data=None,
           iters=1, learning_rate=1e-3, batch_size=100,
-          alpha=0.1,optimizer="Adam"):
+          optimizer="Adam"):
 
     r"""This method is used to train an instance of the DSM model.
 
@@ -217,13 +220,12 @@ class DeepCoxMixtures:
                          epochs=iters,
                          lr=learning_rate,
                          bs=batch_size,
-                         alpha=alpha,
+                         alphas=self.alphas,
                          return_losses=True,
                          smoothing_factor=self.smoothing_factor,
                          use_posteriors=True,
                          random_seed=self.random_seed)
 
-    
     self.torch_model = (model[0].eval(), model[1])
     self.fitted = True
 
