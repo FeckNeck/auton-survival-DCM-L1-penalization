@@ -108,19 +108,37 @@ def get_likelihood(model, breslow_splines, x, t, e):
   #   probs = gates_prob*event_probs
   return probs
 
-def q_function(model, x, t, e, posteriors, typ='soft'):
+def q_function(model, x, t, e, posteriors, typ='soft', alphas=None):
+
+  if alphas is None:
+      alphas = [0.1]
 
   if typ == 'hard': z = get_hard_z(posteriors)
   else: z = sample_hard_z(posteriors)
 
   gates, lrisks = model(x)
-
   k = model.k
+
+  best_alphas = []
+
+  for i in range(k):
+    losses = []
+    for alpha in alphas:
+      lrisks_ = lrisks[z == i][:, i]
+      partial_loss = partial_ll_loss(lrisks_, t[z == i], e[z == i])
+      # add the LASSO regularization term
+      loss = torch.sum(torch.abs(model.expert.weight[i]))*alpha + partial_loss
+      losses.append(loss.item())
+    # get the index of the minimum loss
+    min_loss_index = np.argmin(losses)
+    best_alphas.append(alphas[min_loss_index])
 
   loss = 0
   for i in range(k):
     lrisks_ = lrisks[z == i][:, i]
     loss += partial_ll_loss(lrisks_, t[z == i], e[z == i])
+    #add the LASSO regularization term
+    loss += torch.sum(torch.abs(model.expert.weight[i]))*best_alphas[i]
 
   #log_smax_loss = -torch.nn.LogSoftmax(dim=1)(gates) # tf.nn.log_softmax(gates)
 
@@ -129,6 +147,7 @@ def q_function(model, x, t, e, posteriors, typ='soft'):
   loss+=gate_loss
 
   return loss
+
 
 def e_step(model, breslow_splines, x, t, e):
 
@@ -144,10 +163,12 @@ def e_step(model, breslow_splines, x, t, e):
 
   return posteriors
 
-def m_step(model, optimizer, x, t, e, posteriors, typ='soft'):
+def m_step(model, optimizer, x, t, e, posteriors, typ='soft', alphas=None):
 
+  if alphas is None:
+    alphas = [0.1]
   optimizer.zero_grad()
-  loss = q_function(model, x, t, e, posteriors, typ)
+  loss = q_function(model, x, t, e, posteriors, typ, alphas)
   loss.backward()
   optimizer.step()
 
@@ -182,8 +203,10 @@ def fit_breslow(model, x, t, e, posteriors=None,
 
 def train_step(model, x, t, e, breslow_splines, optimizer,
                bs=256, seed=100, typ='soft', use_posteriors=False,
-               update_splines_after=10, smoothing_factor=1e-4):
+               update_splines_after=10, smoothing_factor=1e-4, alphas=None):
 
+  if alphas is None:
+      alphas = [0.1]
   x, t, e = shuffle(x, t, e, random_state=seed)
 
   n = x.shape[0]
@@ -204,8 +227,7 @@ def train_step(model, x, t, e, breslow_splines, optimizer,
       posteriors = e_step(model, breslow_splines, xb, tb, eb)
 
     torch.enable_grad()
-    loss = m_step(model, optimizer, xb, tb, eb, posteriors, typ=typ)
-
+    loss = m_step(model, optimizer, xb, tb, eb, posteriors, typ=typ, alphas=alphas)
     with torch.no_grad():
       try:
         if i%update_splines_after == 0:
@@ -225,6 +247,7 @@ def train_step(model, x, t, e, breslow_splines, optimizer,
       except Exception as exce:
         print("Exception!!!:", exce)
         logging.warning("Couldn't fit splines, reusing from previous epoch")
+        
     epoch_loss += loss
   #print (epoch_loss/n)
   return breslow_splines
@@ -244,7 +267,10 @@ def train_dcm(model, train_data, val_data, epochs=50,
               patience=3, vloss='q', bs=256, typ='soft', lr=1e-3,
               use_posteriors=True, debug=False, random_seed=0,
               return_losses=False, update_splines_after=10,
-              smoothing_factor=1e-2):
+                smoothing_factor=1e-2, alphas=None):
+
+  if alphas is None:
+        alphas = [0.1]
 
   torch.manual_seed(random_seed)
   np.random.seed(random_seed)
@@ -257,6 +283,8 @@ def train_dcm(model, train_data, val_data, epochs=50,
 
   optimizer = torch.optim.Adam(model.parameters(), lr=lr)
   optimizer = get_optimizer(model, lr)
+  #get weight
+  betas = model.expert.weight
 
   valc = np.inf
   patience_ = 0
@@ -272,11 +300,14 @@ def train_dcm(model, train_data, val_data, epochs=50,
                                  optimizer, bs=bs, seed=epoch, typ=typ,
                                  use_posteriors=use_posteriors,
                                  update_splines_after=update_splines_after,
-                                 smoothing_factor=smoothing_factor)
+                                 smoothing_factor=smoothing_factor, alphas=alphas)
     # print(f'Duration of train-step: {time.time() - train_step_start}')
     # test_step_start = time.time()
     valcn = test_step(model, xv, tv, ev, breslow_splines, loss=vloss, typ=typ)
     # print(f'Duration of test-step: {time.time() - test_step_start}')
+
+    #print if 
+
 
     losses.append(valcn)
 

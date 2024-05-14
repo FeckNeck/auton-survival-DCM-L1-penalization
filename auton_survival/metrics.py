@@ -32,6 +32,7 @@ from sksurv import metrics, util
 from scipy.optimize import fsolve
 from sklearn.metrics import auc
 from tqdm import tqdm
+from scipy.stats import sobol_indices
 import warnings
 
 def treatment_effect(metric, outcomes, treatment_indicator,
@@ -228,6 +229,8 @@ must be within the range of event times."
     _metric = _cumulative_dynamic_auc
   elif metric == 'ctd':
     _metric = _concordance_index_ipcw 
+  elif metric == 'sblty':
+    _metric = _sensibility_measure
   else:
     raise NotImplementedError()
 
@@ -277,6 +280,11 @@ def _concordance_index_ipcw(survival_train, survival_test, predictions, times, r
                                                 1-predictions[idx][:,i],
                                                 tau=times[i])[0])
   return vals
+
+def _sensibility_measure(survival_train, surviva_test, y_true, y_pred, sample_weight=None):
+  idx = np.arange(len(y_pred))
+  idx = idx.astype(int)
+  return sobol_indices(y_true[idx], y_pred[idx], sample_weight=sample_weight)
 
 def phenotype_purity(phenotypes_train, outcomes_train,
                      phenotypes_test=None, outcomes_test=None,

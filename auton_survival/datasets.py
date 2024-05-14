@@ -56,7 +56,7 @@ def increase_censoring(e, t, p, random_seed=0):
 
   return e, t
 
-def _load_framingham_dataset(sequential):
+def _load_framingham_dataset(brut=False):
   """Helper function to load and preprocess the Framingham dataset.
   The Framingham Dataset is a subset of 4,434 participants of the well known,
   ongoing Framingham Heart study [1] for studying epidemiology for
@@ -78,33 +78,47 @@ def _load_framingham_dataset(sequential):
   data = pkgutil.get_data(__name__, 'datasets/framingham.csv')
   data = pd.read_csv(io.BytesIO(data))
 
-  dat_cat = data[['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS',
-                  'educ', 'PREVCHD', 'PREVAP', 'PREVMI',
-                  'PREVSTRK', 'PREVHYP']]
-  dat_num = data[['TOTCHOL', 'AGE', 'SYSBP', 'DIABP',
-                  'CIGPDAY', 'BMI', 'HEARTRTE', 'GLUCOSE']]
-
-  x1 = pd.get_dummies(dat_cat).values
-  x2 = dat_num.values
-  x = np.hstack([x1, x2])
-
+  data = pd.DataFrame(data, columns=['RANDID', 'SEX', 'TOTCHOL', 'AGE', 'SYSBP', 'DIABP', 'CURSMOKE','CIGPDAY', 'BMI', 
+                                           'DIABETES', 'BPMEDS', 'HEARTRTE', 'GLUCOSE', 'educ','PREVCHD', 'PREVAP', 'PREVMI', 
+                                           'PREVSTRK', 'PREVHYP', 'TIME', 'PERIOD','HDLC', 'LDLC', 'DEATH', 'ANGINA', 'HOSPMI', 
+                                           'MI_FCHD', 'ANYCHD','STROKE', 'CVD', 'HYPERTEN', 'TIMEAP', 'TIMEMI', 'TIMEMIFC', 'TIMECHD',
+                                           'TIMESTRK', 'TIMECVD', 'TIMEDTH', 'TIMEHYP'])
   time = (data['TIMEDTH'] - data['TIME']).values
+  data['time'] = time
   event = data['DEATH'].values
+  data['event'] = event
 
-  x = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(x)
-  x_ = StandardScaler().fit_transform(x)
+  data = data.drop(columns=['RANDID', 'TIME', 'PERIOD', 'DEATH', 'TIMEDTH','TIMEMI', 'TIMEMIFC', 'TIMECHD', 'TIMESTRK', 'TIMECVD', 'TIMEHYP', 'TIMEAP'])
+  time = pd.DataFrame(time, columns=['time'])
+  event = pd.DataFrame(event, columns=['event'])
 
-  if not sequential:
-    return x_, time, event
-  else:
-    x, t, e = [], [], []
-    for id_ in sorted(list(set(data['RANDID']))):
-      x.append(x_[data['RANDID'] == id_])
-      t.append(time[data['RANDID'] == id_])
-      e.append(event[data['RANDID'] == id_])
-    return x, t, e
 
-def _load_pbc_dataset(sequential):
+  dat_cat = data[['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS','educ', 'PREVCHD', 'PREVAP', 'PREVMI',
+                  'PREVSTRK', 'PREVHYP', 'ANGINA', 'HOSPMI','MI_FCHD', 'ANYCHD', 'STROKE', 'CVD', 'HYPERTEN']]
+  dat_num = data[['TOTCHOL', 'AGE', 'SYSBP', 'DIABP','CIGPDAY', 'BMI', 'HEARTRTE', 'GLUCOSE', 'LDLC', 'HDLC']]
+
+  #get dummies pandas for categorical data
+  dat_cat = pd.get_dummies(dat_cat, drop_first=True)
+
+  data = pd.concat([dat_cat, dat_num], axis=1)
+
+  data = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(data)
+
+  if brut :
+    return data, time, event
+  
+  #scale the data
+  data = StandardScaler().fit_transform(data)
+
+  data = pd.DataFrame(data, columns=['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'educ', 'PREVCHD', 'PREVAP',
+       'PREVMI', 'PREVSTRK', 'PREVHYP', 'ANGINA', 'HOSPMI', 'MI_FCHD',
+       'ANYCHD', 'STROKE', 'CVD', 'HYPERTEN', 'TOTCHOL', 'AGE', 'SYSBP',
+       'DIABP', 'CIGPDAY', 'BMI', 'HEARTRTE', 'GLUCOSE', 'LDLC', 'HDLC'])
+  data = pd.concat([data, time, event], axis=1)
+
+  return data, time, event
+
+def _load_pbc_dataset(brut=False):
   """Helper function to load and preprocess the PBC dataset
   The Primary biliary cirrhosis (PBC) Dataset [1] is well known
   dataset for evaluating survival analysis models with time
@@ -124,33 +138,49 @@ def _load_pbc_dataset(sequential):
   data = pkgutil.get_data(__name__, 'datasets/pbc2.csv')
   data = pd.read_csv(io.BytesIO(data))
 
-  data['histologic'] = data['histologic'].astype(str)
-  dat_cat = data[['drug', 'sex', 'ascites', 'hepatomegaly',
-                  'spiders', 'edema', 'histologic']]
-  dat_num = data[['serBilir', 'serChol', 'albumin', 'alkaline',
-                  'SGOT', 'platelets', 'prothrombin']]
-  age = data['age'] + data['years']
-
-  x1 = pd.get_dummies(dat_cat).values
-  x2 = dat_num.values
-  x3 = age.values.reshape(-1, 1)
-  x = np.hstack([x1, x2, x3])
-
   time = (data['years'] - data['year']).values
   event = data['status2'].values
+  data['histologic'] = data['histologic'].astype(str)
 
-  x = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(x)
-  x_ = StandardScaler().fit_transform(x)
+  #convert and concat features, time and event numpy array
+  data = pd.DataFrame(data, columns=['sno.', 'id', 'years', 'status', 'drug', 'age', 'sex', 'year',
+       'ascites', 'hepatomegaly', 'spiders', 'edema', 'serBilir', 'serChol', 'albumin', 'alkaline', 'SGOT', 'platelets', 
+       'prothrombin', 'histologic'])
+  time = pd.DataFrame(time, columns=['time'])
+  event = pd.DataFrame(event, columns=['event'])
 
-  if not sequential:
-    return x_, time, event
-  else:
-    x, t, e = [], [], []
-    for id_ in sorted(list(set(data['id']))):
-      x.append(x_[data['id'] == id_])
-      t.append(time[data['id'] == id_])
-      e.append(event[data['id'] == id_])
-    return x, t, e
+  age = data['age'] + data['years']
+  data['age'] = age
+  data = data.drop(columns=['years','id','status','year','sno.'])
+
+  dat_cat = data[['drug', 'sex', 'ascites', 'hepatomegaly',
+                  'spiders', 'edema', 'histologic']]
+  dat_num = data[['age','serBilir', 'serChol', 'albumin', 'alkaline',
+                  'SGOT', 'platelets', 'prothrombin']]
+
+  #get dummies pandas for categorical data
+  dat_cat = pd.get_dummies(dat_cat, drop_first=True)
+  
+  data = pd.concat([dat_cat, dat_num], axis=1)
+  
+  #replace nan values with mean
+  data = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(data)
+
+  if brut :
+    return data, time, event
+  
+  #scale the data
+  data = StandardScaler().fit_transform(data)
+
+  #transform the data in dataframe
+  data = pd.DataFrame(data, columns=['drug_placebo', 'sex_male', 'ascites_Yes', 'hepatomegaly_Yes',
+       'spiders_Yes', 'edema_edema despite diuretics',
+       'edema_edema no diuretics', 'histologic_2', 'histologic_3',
+       'histologic_4', 'age', 'serBilir', 'serChol', 'albumin', 'alkaline',
+       'SGOT', 'platelets', 'prothrombin'])
+  data = pd.concat([data, time, event], axis=1)
+
+  return data, time, event
 
 def load_support():
 
@@ -179,10 +209,12 @@ def load_support():
 
   cat_feats = ['sex', 'dzgroup', 'dzclass', 'income', 'race', 'ca']
   num_feats = ['age', 'num.co', 'meanbp', 'wblc', 'hrt', 'resp',
-               'temp', 'pafi', 'alb', 'bili', 'crea', 'sod', 'ph',
-               'glucose', 'bun', 'urine', 'adlp', 'adls']
+              'temp', 'pafi', 'alb', 'bili', 'crea', 'sod', 'ph',
+              'glucose', 'bun', 'urine', 'adlp', 'adls']
 
-  return outcomes, data[cat_feats+num_feats]
+  return outcomes, data[cat_feats + num_feats]
+
+
 
 
 # def _load_support_dataset():
@@ -256,7 +288,7 @@ def load_synthetic_cf_phenotyping():
 
   return outcomes, features, interventions
 
-def load_dataset(dataset='SUPPORT', **kwargs):
+def load_dataset(dataset='SUPPORT',brut=False):
   """Helper function to load datasets to test Survival Analysis models.
   Currently implemented datasets include:\n
   **SUPPORT**: This dataset comes from the Vanderbilt University study
@@ -302,14 +334,13 @@ def load_dataset(dataset='SUPPORT', **kwargs):
       are the input covariates, \( t \) the event times and
       \( e \) the censoring indicators.
   """
-  sequential = kwargs.get('sequential', False)
 
   if dataset == 'SUPPORT':
     return load_support()
   if dataset == 'PBC':
-    return _load_pbc_dataset(sequential)
+    return _load_pbc_dataset(brut)
   if dataset == 'FRAMINGHAM':
-    return _load_framingham_dataset(sequential)
+    return _load_framingham_dataset(brut)
   if dataset == 'MNIST':
     return _load_mnist()
   if dataset == 'SYNTHETIC':

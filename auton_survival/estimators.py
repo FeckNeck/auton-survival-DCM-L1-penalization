@@ -110,15 +110,18 @@ def _fit_dcm(features, outcomes, val_data, random_seed, **hyperparams):
   epochs = hyperparams.get("epochs", 50)
   smoothing_factor = hyperparams.get("smoothing_factor", 1e-4)
   gamma = hyperparams.get("gamma", 10)
+  alphas = hyperparams.get("alphas", [0.1])
 
   model = DeepCoxMixtures(k=k,
                           layers=layers,
                           gamma=gamma,
+                          alphas=alphas,
                           smoothing_factor=smoothing_factor,
                           random_seed=random_seed)
   model.fit(x=features, t=outcomes.time, e=outcomes.event,
-            val_data=val_data, iters=epochs, batch_size=bs,
+            val_data=val_data,iters=epochs, batch_size=bs,
             learning_rate=lr)
+
 
   return model
 
@@ -324,7 +327,7 @@ data and training set weights are both specified."
 
     self.fitted = True
     return self
-
+  
   def predict_survival(self, features, times):
 
     """Predict survival probabilities at specified time(s).
