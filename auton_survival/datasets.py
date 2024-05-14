@@ -100,20 +100,23 @@ def _load_framingham_dataset(brut=False):
   #get dummies pandas for categorical data
   dat_cat = pd.get_dummies(dat_cat, drop_first=True)
 
+  #scale the data
+  dat_num = StandardScaler().fit_transform(dat_num)
+
+  dat_num = pd.DataFrame(dat_num, columns=['TOTCHOL', 'AGE', 'SYSBP', 'DIABP','CIGPDAY', 'BMI', 'HEARTRTE', 'GLUCOSE', 'LDLC', 'HDLC'])
+
   data = pd.concat([dat_cat, dat_num], axis=1)
 
   data = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(data)
 
   if brut :
     return data, time, event
-  
-  #scale the data
-  data = StandardScaler().fit_transform(data)
 
   data = pd.DataFrame(data, columns=['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'educ', 'PREVCHD', 'PREVAP',
        'PREVMI', 'PREVSTRK', 'PREVHYP', 'ANGINA', 'HOSPMI', 'MI_FCHD',
        'ANYCHD', 'STROKE', 'CVD', 'HYPERTEN', 'TOTCHOL', 'AGE', 'SYSBP',
        'DIABP', 'CIGPDAY', 'BMI', 'HEARTRTE', 'GLUCOSE', 'LDLC', 'HDLC'])
+  
   data = pd.concat([data, time, event], axis=1)
 
   return data, time, event
@@ -158,9 +161,14 @@ def _load_pbc_dataset(brut=False):
   dat_num = data[['age','serBilir', 'serChol', 'albumin', 'alkaline',
                   'SGOT', 'platelets', 'prothrombin']]
 
-  #get dummies pandas for categorical data
+  #get dummies pandas for categorical data and boolean type
   dat_cat = pd.get_dummies(dat_cat, drop_first=True)
-  
+
+  dat_num = StandardScaler().fit_transform(dat_num)
+
+  dat_num = pd.DataFrame(dat_num, columns=['age','serBilir', 'serChol', 'albumin', 'alkaline',
+                  'SGOT', 'platelets', 'prothrombin'])
+
   data = pd.concat([dat_cat, dat_num], axis=1)
   
   #replace nan values with mean
@@ -168,9 +176,6 @@ def _load_pbc_dataset(brut=False):
 
   if brut :
     return data, time, event
-  
-  #scale the data
-  data = StandardScaler().fit_transform(data)
 
   #transform the data in dataframe
   data = pd.DataFrame(data, columns=['drug_placebo', 'sex_male', 'ascites_Yes', 'hepatomegaly_Yes',
@@ -178,6 +183,18 @@ def _load_pbc_dataset(brut=False):
        'edema_edema no diuretics', 'histologic_2', 'histologic_3',
        'histologic_4', 'age', 'serBilir', 'serChol', 'albumin', 'alkaline',
        'SGOT', 'platelets', 'prothrombin'])
+  
+  data['drug_placebo'] = data['drug_placebo'].astype(int)
+  data['sex_male'] = data['sex_male'].astype(int)
+  data['ascites_Yes'] = data['ascites_Yes'].astype(int)
+  data['hepatomegaly_Yes'] = data['hepatomegaly_Yes'].astype(int)
+  data['spiders_Yes'] = data['spiders_Yes'].astype(int)
+  data['edema_edema despite diuretics'] = data['edema_edema despite diuretics'].astype(int)
+  data['edema_edema no diuretics'] = data['edema_edema no diuretics'].astype(int)
+  data['histologic_2'] = data['histologic_2'].astype(int)
+  data['histologic_3'] = data['histologic_3'].astype(int)
+  data['histologic_4'] = data['histologic_4'].astype(int)
+
   data = pd.concat([data, time, event], axis=1)
 
   return data, time, event
