@@ -119,8 +119,6 @@ def q_function(model, x, t, e, posteriors, typ='soft', alphas=None):
   gates, lrisks = model(x)
   k = model.k
 
-  loss = 0
-
   best_alphas = []
 
   for i in range(k):
@@ -135,6 +133,7 @@ def q_function(model, x, t, e, posteriors, typ='soft', alphas=None):
     min_loss_index = np.argmin(losses)
     best_alphas.append(alphas[min_loss_index])
 
+  loss = 0
   for i in range(k):
     lrisks_ = lrisks[z == i][:, i]
     loss += partial_ll_loss(lrisks_, t[z == i], e[z == i])
